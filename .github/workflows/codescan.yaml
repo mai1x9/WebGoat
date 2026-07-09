@@ -1,0 +1,35 @@
+name: CoreFix Code Security Scan
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  security-events: write
+
+jobs:
+  security-scan:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run CoreFix Code Scanner
+        run: |
+          mkdir -p ${{ github.workspace }}/scan-results
+          docker run --rm \
+            -e X_CFIX_API_KEY=${{ secrets.X_CFIX_API_KEY }} \
+            -e GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} \
+            -v ${{ github.workspace }}:/code \
+            -v ${{ github.workspace }}/scan-results:/output \
+            corefixhq/cfix:latest osv \
+            --ignore-ai-analysis
+
+      - name: Upload scan results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: corefix-scan-results
+          path: scan-results/
